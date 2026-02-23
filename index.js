@@ -2,86 +2,102 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const { PrismaClient } = require("@prisma/client");
 
-// Inisialisasi
 dotenv.config();
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;
+const JWT_SECRET = process.env.JWT_SECRET || "RAHASIA_NEGARA_123";
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// --- ENDPOINT REGISTER ---
+// --- 1. ENDPOINT REGISTER USER ---
 app.post("/api/auth/register", async (req, res) => {
-  const { username, email, password, bio } = req.body;
+  const { name, email, password, role } = req.body;
 
-  // 1. Validasi Input Dasar
-  if (!username || !email || !password) {
+  if (!name || !email || !password) {
     return res.status(400).json({
       success: false,
-      message: "Isi semua field (username, email, password) ya!",
+      message: "Field name, email, & password wajib diisi!",
     });
   }
 
-  // 2. Cek User Terdaftar (Gunakan findFirst untuk MySQL/XAMPP)
-  const userExists = await prisma.user.findFirst({
-    where: {
-      OR: [{ email }, { username }],
-    },
-  });
-
+  const userExists = await prisma.user.findUnique({ where: { email } });
   if (userExists) {
-    return res.status(400).json({
-      success: false,
-      message: "Username atau Email sudah dipakai orang lain.",
-    });
+    return res
+      .status(400)
+      .json({ success: false, message: "Email sudah terdaftar!" });
   }
 
-  // 3. Hashing Password (Keamanan wajib)
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(password, salt);
+  const hashedPassword = await bcrypt.hash(password, 10);
 
-  // 4. Simpan ke MySQL via Prisma
-  const user = await prisma.user.create({
+  const newUser = await prisma.user.create({
     data: {
-      username,
+      name,
       email,
       password: hashedPassword,
-      bio: bio || null,
+      role: role || "USER", // Default ke USER kalau tidak diisi
     },
-    // Memilih data yang dikembalikan (Password jangan dikirim balik!)
-    select: {
-      id: true,
-      username: true,
-      email: true,
-      createdAt: true,
-    },
+    select: { id: true, name: true, email: true, role: true },
   });
 
-  res.status(201).json({
+  res
+    .status(201)
+    .json({ success: true, message: "User berhasil dibuat!", data: newUser });
+});
+
+// --- 2. ENDPOINT LOGIN USER ---
+app.post("/api/auth/login", async (req, res) => {
+  const { email, password } = req.body;
+
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) {
+    return res
+      .status(401)
+      .json({ success: false, message: "Email atau Password salah!" });
+  }
+
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch) {
+    return res
+      .status(401)
+      .json({ success: false, message: "Email atau Password salah!" });
+  }
+
+  const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, {
+    expiresIn: "1d",
+  });
+
+  res.json({
     success: true,
-    message: "User berhasil didaftarkan! 🚀",
-    data: user,
+    token,
+    user: { id: user.id, name: user.name, role: user.role },
   });
 });
 
-// --- GLOBAL ERROR HANDLER (Fitur Express 5) ---
+// --- 3. ENDPOINT GET ALL USERS (Optional buat ngecek) ---
+app.get("/api/users", async (req, res) => {
+  const users = await prisma.user.findMany({
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      _count: { select: { posts: true } },
+    },
+  });
+  res.json({ success: true, data: users });
+});
+
+// Error Handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({
-    success: false,
-    message: "Ada masalah di internal server!",
-    error: err.message,
-  });
+  res.status(500).json({ success: false, message: err.message });
 });
 
 app.listen(PORT, () => {
-  console.log(`
-  ✅ Server Blog Aktif!
-  🌍 URL: http://localhost:${PORT}
-  🛠  Database: MySQL (XAMPP)
-  `);
+  console.log(`🚀 Server on http://localhost:${PORT}`);
 });
