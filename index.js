@@ -8,8 +8,8 @@ const { PrismaClient } = require("@prisma/client");
 dotenv.config();
 const app = express();
 const prisma = new PrismaClient();
-const PORT = process.env.PORT || 5000;
-const JWT_SECRET = process.env.JWT_SECRET || "RAHASIA_NEGARA_123";
+const PORT = process.env.PORT;
+const JWT_SECRET = process.env.JWT_SECRET;
 
 app.use(cors());
 app.use(express.json());
