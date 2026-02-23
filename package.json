@@ -1,18 +1,18 @@
 {
   "name": "backend-cms-najran",
-  "version": "1.0.50",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "bun run --watch src/index.ts"
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
   },
   "dependencies": {
-    "@prisma/client": "^7.4.1",
-    "elysia": "latest",
-    "prismabox": "^1.1.26"
+    "@hono/node-server": "^1.19.9",
+    "hono": "^4.12.2"
   },
   "devDependencies": {
-    "bun-types": "latest",
-    "prisma": "^7.4.1"
-  },
-  "module": "src/index.js"
+    "@types/node": "^20.11.17",
+    "tsx": "^4.7.1",
+    "typescript": "^5.8.3"
+  }
 }
