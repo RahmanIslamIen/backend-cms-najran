@@ -100,4 +100,6 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 Server on http://localhost:${PORT}`);
+  // Tambahkan ini buat cek koneksi database
+  console.log(`📡 DB Connected to: ${process.env.DATABASE_URL}`);
 });
